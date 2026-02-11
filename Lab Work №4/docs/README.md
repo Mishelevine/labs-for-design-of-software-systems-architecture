@@ -234,3 +234,287 @@
 
 ## Тестирование API
 
+### 1) POST `/api/v1/put_data`
+
+**Body**:
+```json
+{
+    "device_imei": "869132079252509",
+    "timestamp": "2026-02-11T18:41:01",
+    "lon": 39.664119466145834,
+    "lat": 54.65038248697917,
+    "heading": 166,
+    "alt": 120,
+    "signals": [
+        {
+            "station_type_id": 1,
+            "bssid": "52FF20F18931",
+            "ssid": "",
+            "rssi": -83
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "50FF20818931",
+            "ssid": "",
+            "rssi": -83
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "C006C3B8D928",
+            "ssid": "",
+            "rssi": -84
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "50FF20818881",
+            "ssid": "",
+            "rssi": -87
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "E063DAD642DC",
+            "ssid": "",
+            "rssi": -88
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "52FF20F18881",
+            "ssid": "",
+            "rssi": -88
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "54AF972A0431",
+            "ssid": "",
+            "rssi": -90
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "7E628B4A7BBF",
+            "ssid": "",
+            "rssi": -93
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "5C628B4A7BBF",
+            "ssid": "",
+            "rssi": -94
+        }
+    ]
+}
+```
+
+**Headers:**
+![alt text](assets/put_data_headers.png)
+
+**Responce:**
+![alt text](assets/put_data_responce.png)
+
+**Responce Headers:**
+![alt text](assets/put_data_responce_headers.png)
+
+**Код автотестов и результат:**
+![alt text](asserts/put_data_tests.png)
+
+### 2) POST `/api/v1/get_data`
+
+**Body:**
+```json
+{
+    "device_imei": "868184067941461",
+    "provider_mode": "local_only",
+    "signals": [
+        {
+            "station_type_id": 1,
+            "bssid": "245A4C0C68E4",
+            "ssid": "",
+            "rssi": -72
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "E4FAC4F0E5CF",
+            "ssid": "",
+            "rssi": -81
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "82AFCAA90363",
+            "ssid": "",
+            "rssi": -85
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "80AFCA990363",
+            "ssid": "",
+            "rssi": -85
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "B41C30A6831D",
+            "ssid": "",
+            "rssi": -87
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "9017C8CC04FC",
+            "ssid": "",
+            "rssi": -89
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "74C14FDDA03D",
+            "ssid": "",
+            "rssi": -90
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "B0BE7680C9FA",
+            "ssid": "",
+            "rssi": -90
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "74C14F614766",
+            "ssid": "",
+            "rssi": -92
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "6083E78447C8",
+            "ssid": "",
+            "rssi": -92
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "3460F9E66B62",
+            "ssid": "",
+            "rssi": -93
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "9C9D7EC12E4E",
+            "ssid": "",
+            "rssi": -94
+        },
+        {
+            "station_type_id": 1,
+            "bssid": "304596DD4371",
+            "ssid": "",
+            "rssi": -95
+        }
+    ],
+    "timestamp": "2026-02-11T03:12:46",
+    "map_match": false
+}
+```
+
+**Headers:**
+![alt text](assets/get_data_headers.png)
+
+**Responce:**
+![alt text](assets/get_data_response.png)
+
+**Responce Headers:**
+![alt text](assets/get_data_respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/get_data_tests.png)
+
+### 3)POST `/api/v1/admin/keys/create`
+**Body:**
+```json
+{
+  "company_uid": "string",
+  "name": "new_key",
+  "req_max_yandex": 1000,
+  "req_max_local": 1000
+}
+```
+
+**Headers:**
+![alt text](assets/create_key_headers.png)
+
+**Responce:**
+![alt text](assets/create_key_response.png)
+
+**Responce Headers:**
+![alt text](assets/create_key_respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/create_key_tests.png)
+
+### 4)GET `/api/v1/statistics/key_usage`
+**Body:**нет
+
+**Headers and Responce:**
+![alt text](assets/key_usage_headers_and_response.png)
+
+**Responce Headers:**
+![alt text](assets/key_usage_respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/key_usage_tests.png)
+
+### 5)GET `/api/v1/statistics/company_devices`
+**Params:**
+![alt text](assets/company_devices_params.png)
+
+**Headers and Responce:**
+![alt text](assets/company_devices_headers_and_response.png)
+
+**Responce Headers:**
+![alt text](assets/company_devices_respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/company_devices_tests.png)
+
+### 6)GET `/api/v1/admin/keys/list?company_uid=...`
+**Body:**
+```json
+```
+
+**Headers:**
+![alt text](assets/headers.png)
+
+**Responce:**
+![alt text](assets/response.png)
+
+**Responce Headers:**
+![alt text](assets/respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/tests.png)
+
+### 7)PUT `/api/v1/admin/keys/{company_uid}/{key_name}`
+**Body:**
+```json
+```
+
+**Headers:**
+![alt text](assets/headers.png)
+
+**Responce:**
+![alt text](assets/response.png)
+
+**Responce Headers:**
+![alt text](assets/respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/tests.png)
+
+### 8)DELETE `/api/v1/admin/keys/{company_uid}/{key_name}`
+**Body:**
+```json
+```
+
+**Headers:**
+![alt text](assets/headers.png)
+
+**Responce:**
+![alt text](assets/response.png)
+
+**Responce Headers:**
+![alt text](assets/respose_header.png)
+
+**Код автотестов и результат:**
+![alt text](assets/tests.png)
