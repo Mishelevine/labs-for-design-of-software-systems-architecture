@@ -305,16 +305,16 @@
 ```
 
 **Headers:**
-![alt text](assets/put_data_headers.png)
+![alt text](assets/postman/put_data/headers.png)
 
 **Responce:**
-![alt text](assets/put_data_responce.png)
+![alt text](assets/postman/put_data/responce.png)
 
 **Responce Headers:**
-![alt text](assets/put_data_responce_headers.png)
+![alt text](assets/postman/put_data/responce_headers.png)
 
 **Код автотестов и результат:**
-![alt text](asserts/put_data_tests.png)
+![alt text](assets/postman/put_data/tests.png)
 
 ### 2) POST `/api/v1/get_data`
 
@@ -409,16 +409,16 @@
 ```
 
 **Headers:**
-![alt text](assets/get_data_headers.png)
+![alt text](assets/postman/get_data/headers.png)
 
 **Responce:**
-![alt text](assets/get_data_response.png)
+![alt text](assets/postman/get_data/response.png)
 
 **Responce Headers:**
-![alt text](assets/get_data_respose_header.png)
+![alt text](assets/postman/get_data/response_header.png)
 
 **Код автотестов и результат:**
-![alt text](assets/get_data_tests.png)
+![alt text](assets/postman/get_data/tests.png)
 
 ### 3)POST `/api/v1/admin/keys/create`
 **Body:**
@@ -432,89 +432,91 @@
 ```
 
 **Headers:**
-![alt text](assets/create_key_headers.png)
+![alt text](assets/postman/create_key/headers.png)
 
 **Responce:**
-![alt text](assets/create_key_response.png)
+![alt text](assets/postman/create_key/response.png)
 
 **Responce Headers:**
-![alt text](assets/create_key_respose_header.png)
+![alt text](assets/postman/create_key/response_header.png)
 
 **Код автотестов и результат:**
-![alt text](assets/create_key_tests.png)
+![alt text](assets/postman/create_key/tests.png)
 
 ### 4)GET `/api/v1/statistics/key_usage`
 **Body:**нет
 
 **Headers and Responce:**
-![alt text](assets/key_usage_headers_and_response.png)
+![alt text](assets/postman/key_usage/headers_and_response.png)
 
 **Responce Headers:**
-![alt text](assets/key_usage_respose_header.png)
+![alt text](assets/postman/key_usage/response_header.png)
 
 **Код автотестов и результат:**
-![alt text](assets/key_usage_tests.png)
+![alt text](assets/postman/key_usage/tests.png)
 
 ### 5)GET `/api/v1/statistics/company_devices`
 **Params:**
-![alt text](assets/company_devices_params.png)
+![alt text](assets/postman/company_devices/params.png)
 
 **Headers and Responce:**
-![alt text](assets/company_devices_headers_and_response.png)
+![alt text](assets/postman/company_devices/headers_and_response.png)
 
 **Responce Headers:**
-![alt text](assets/company_devices_respose_header.png)
+![alt text](assets/postman/company_devices/response_header.png)
 
 **Код автотестов и результат:**
-![alt text](assets/company_devices_tests.png)
+![alt text](assets/postman/company_devices/tests.png)
 
 ### 6)GET `/api/v1/admin/keys/list?company_uid=...`
-**Body:**
-```json
-```
+
+**Params:**
+![alt text](assets/postman/keys_list/params.png)
 
 **Headers:**
-![alt text](assets/headers.png)
+![alt text](assets/postman/keys_list/headers.png)
 
 **Responce:**
-![alt text](assets/response.png)
+![alt text](assets/postman/keys_list/response.png)
 
 **Responce Headers:**
-![alt text](assets/respose_header.png)
+![alt text](assets/postman/keys_list/respose_header.png)
 
 **Код автотестов и результат:**
-![alt text](assets/tests.png)
+![alt text](assets/postman/keys_list/tests.png)
 
 ### 7)PUT `/api/v1/admin/keys/{company_uid}/{key_name}`
 **Body:**
 ```json
+{
+    "req_max_yandex": 500,
+    "req_max_local": 500
+}
 ```
 
-**Headers:**
-![alt text](assets/headers.png)
+**Path Variables and Response:**
+![alt text](assets/postman/put_keys/params_response.png)
 
-**Responce:**
-![alt text](assets/response.png)
-
-**Responce Headers:**
-![alt text](assets/respose_header.png)
+**Headers and Response Headers:**
+![alt text](assets/postman/put_keys/headers.png)
 
 **Код автотестов и результат:**
-![alt text](assets/tests.png)
+![alt text](assets/postman/put_keys/tests.png)
 
 ### 8)DELETE `/api/v1/admin/keys/{company_uid}/{key_name}`
 **Body:**
 ```json
+{
+    "req_max_yandex": 500,
+    "req_max_local": 500
+}
 ```
 
-**Headers:**
-![alt text](assets/headers.png)
+**Path Variables and Response:**
+![alt text](assets/postman/delete_key/params_response.png)
 
-**Responce:**
-![alt text](assets/response.png)
-
-**Responce Headers:**
-![alt text](assets/respose_header.png)
+**Headers and Response Headers:**
+![alt text](assets/postman/delete_key/headers.png)
 
 **Код автотестов и результат:**
-![alt text](assets/tests.png)
+![alt text](assets/postman/delete_key/tests.png)
