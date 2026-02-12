@@ -157,13 +157,13 @@
 }
 ```
 ### 6)GET `/api/v1/admin/keys/list?company_uid=...` - список всех ключей компании
-![alt text](assets/put_key.png)
+![alt text](assets/keys_list.png)
 **Описание:** позволяет получить информацию о всех ключах привязанных к конкретной компании
 
 **Headers:**
 - `X-Admin-Token: <admin_token>` - ключ администратора.
 **Query:**
-- `company_uid` (string)
+- `company_uid` (string) - уникальный идентификатор компании
 **Body:** нет
 **Response:**
 ```json
@@ -188,8 +188,8 @@
 - `Content-Type: application/json`
 
 **Path params:**
-- `company_uid` (string)
-- `key_name` (string)
+- `company_uid` (string) - уникальный идентификатор компании
+- `key_name` (string) - название ключа API
 
 **Body:**
 ```json
@@ -215,8 +215,8 @@
 - `X-Admin-Token: <admin_token>` - ключ администратора
 
 **Path params:**
-- `company_uid` (string)
-- `key_name` (string)
+- `company_uid` (string) - уникальный идентификатор компании
+- `key_name` (string) - название ключа API
 
 **Body:**нет
 
