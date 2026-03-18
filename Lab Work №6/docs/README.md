@@ -9,44 +9,13 @@
 
 # Порождающие шаблоны
 
-## 1. Одиночка (Singleton)
+## 1. Singleton
 
 **Общее назначение:** Гарантирует, что класс имеет только один экземпляр, и предоставляет глобальную точку доступа к нему. Применяется, когда нужно контролировать создание дорогостоящего ресурса и обеспечить единый доступ к нему из любой части программы.
 
 **Назначение в проекте LBS:** Модели kNN-локализации (`KnnMatrixCache`) создаются по одному экземпляру для Wi-Fi и GSM на уровне модуля. Это гарантирует, что матрица сигналов загружается в память один раз и используется совместно всеми запросами без повторного построения.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-class KnnCacheState {
-  +matrix : csr_matrix
-  +inv_index : list[ndarray]
-  +bssid_to_col_idx : dict
-  +col_to_bssid : list[str]
-  +coords : ndarray
-  +loaded_at : datetime
-}
-
-class KnnMatrixCache {
-  -station_type_id : int
-  -_state : KnnCacheState | None
-  -_lock : asyncio.Lock
-  +reload(session, type) : None
-  +get_matrix() : csr_matrix
-  +get_knn_cache() : tuple
-}
-
-note top of KnnMatrixCache
-  Создаётся один раз на уровне модуля:
-  wifi_knn_cache = KnnMatrixCache(1)
-  gsm_knn_cache  = KnnMatrixCache(2)
-  Единственные экземпляры в процессе
-end note
-
-KnnMatrixCache "1" *-- "0..1" KnnCacheState : хранит >
-@enduml
-```
+![alt text](assets/singleton.png)
 
 ```python
 # app/services/knn_localizer.py
@@ -58,18 +27,15 @@ class KnnMatrixCache:
         self._lock = asyncio.Lock()
 
     def get_knn_cache(self):
-        state = self._state  # атомарное чтение — всегда согласованное состояние
+        state = self._state  # атомарное чтение - всегда согласованное состояние
         if state is None:
             raise ModelNotReady("knn_cache_not_ready")
         return state.matrix, state.inv_index, state.bssid_to_col_idx, \
                state.col_to_bssid, state.coords
 
-# Единственные глобальные экземпляры — создаются один раз при старте приложения
+# Единственные глобальные экземпляры - создаются один раз при старте приложения
 wifi_knn_cache = KnnMatrixCache(station_type_id=1)  # Wi-Fi
-wifi_localizer = WiFiKNNLocalizer(cache=wifi_knn_cache, k=5)
-
 gsm_knn_cache = KnnMatrixCache(station_type_id=2)   # GSM
-gsm_localizer = WiFiKNNLocalizer(cache=gsm_knn_cache, k=5)
 ```
 
 ---
@@ -80,45 +46,10 @@ gsm_localizer = WiFiKNNLocalizer(cache=gsm_knn_cache, k=5)
 
 **Назначение в проекте LBS:** Создание кэшей `KnnMatrixCache` для разных типов станций (Wi-Fi / GSM) вынесено в фабрику. Абстрактный `LocalizerFactory` объявляет методы `create_cache()` и `create_localizer()`, а конкретные фабрики `WiFiLocalizerFactory` и `GsmLocalizerFactory` реализуют их с нужными параметрами.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-abstract class LocalizerFactory {
-  +{abstract} create_cache() : KnnMatrixCache
-  +{abstract} create_localizer() : WiFiKNNLocalizer
-}
-
-class WiFiLocalizerFactory {
-  +create_cache() : KnnMatrixCache
-  +create_localizer() : WiFiKNNLocalizer
-}
-
-class GsmLocalizerFactory {
-  +create_cache() : KnnMatrixCache
-  +create_localizer() : WiFiKNNLocalizer
-}
-
-class KnnMatrixCache {
-  -station_type_id : int
-}
-
-class WiFiKNNLocalizer {
-  -cache : KnnMatrixCache
-  -k : int
-}
-
-LocalizerFactory <|-- WiFiLocalizerFactory
-LocalizerFactory <|-- GsmLocalizerFactory
-WiFiLocalizerFactory ..> KnnMatrixCache : <<creates>> station_type_id=1
-WiFiLocalizerFactory ..> WiFiKNNLocalizer : <<creates>>
-GsmLocalizerFactory ..> KnnMatrixCache : <<creates>> station_type_id=2
-GsmLocalizerFactory ..> WiFiKNNLocalizer : <<creates>>
-@enduml
-```
+![alt text](assets/factory_method.png)
 
 ```python
-# app/services/knn_localizer.py  (адаптированный фрагмент)
+# app/services/knn_localizer.py
 
 from abc import ABC, abstractmethod
 
@@ -130,7 +61,7 @@ class LocalizerFactory(ABC):
         pass
 
     @abstractmethod
-    def create_localizer(self) -> WiFiKNNLocalizer:
+    def create_localizer(self) -> KNNLocalizer:
         pass
 
 class WiFiLocalizerFactory(LocalizerFactory):
@@ -139,9 +70,9 @@ class WiFiLocalizerFactory(LocalizerFactory):
     def create_cache(self) -> KnnMatrixCache:
         return KnnMatrixCache(station_type_id=1)
 
-    def create_localizer(self) -> WiFiKNNLocalizer:
+    def create_localizer(self) -> KNNLocalizer:
         cache = self.create_cache()
-        return WiFiKNNLocalizer(cache=cache, k=5)
+        return KNNLocalizer(cache=cache, k=5)
 
 class GsmLocalizerFactory(LocalizerFactory):
     """ConcreteCreator: создаёт компоненты GSM локализатора."""
@@ -149,9 +80,9 @@ class GsmLocalizerFactory(LocalizerFactory):
     def create_cache(self) -> KnnMatrixCache:
         return KnnMatrixCache(station_type_id=2)
 
-    def create_localizer(self) -> WiFiKNNLocalizer:
+    def create_localizer(self) -> KNNLocalizer:
         cache = self.create_cache()
-        return WiFiKNNLocalizer(cache=cache, k=5)
+        return KNNLocalizer(cache=cache, k=5)
 
 # Использование (заменяет прямое создание в модуле):
 wifi_localizer = WiFiLocalizerFactory().create_localizer()
@@ -160,42 +91,16 @@ gsm_localizer  = GsmLocalizerFactory().create_localizer()
 
 ---
 
-## 3. Строитель (Builder)
+## 3. Builder
 
 **Общее назначение:** Отделяет конструирование сложного объекта от его представления. Позволяет создавать один и тот же тип объекта различными способами, поэтапно задавая параметры через fluent-интерфейс.
 
 **Назначение в проекте LBS:** Объект `GetDataOut` (ответ эндпоинта) собирается поэтапно в зависимости от результатов локализации: сначала устанавливаются координаты и точность, затем источник, затем дополнительный суффикс `source_info` при map-matching. Паттерн Builder формализует этот процесс пошагового конструирования ответа.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-class GetDataOut {
-  +lat : float
-  +lon : float
-  +accuracy : float
-  +source : str
-  +source_info : str | None
-}
-
-class GetDataOutBuilder {
-  -_lat : float
-  -_lon : float
-  -_accuracy : float
-  -_source : str
-  -_source_info : str
-  +set_location(lat, lon, accuracy) : GetDataOutBuilder
-  +set_source(source, info) : GetDataOutBuilder
-  +with_map_match(enabled) : GetDataOutBuilder
-  +build() : GetDataOut
-}
-
-GetDataOutBuilder ..> GetDataOut : <<creates>>
-@enduml
-```
+![alt text](assets/builder.png)
 
 ```python
-# app/schemas.py  (класс продукта — существующий код)
+# app/schemas.py
 
 class GetDataOut(BaseModel):
     lat: float
@@ -204,7 +109,7 @@ class GetDataOut(BaseModel):
     source: Literal["wifi_local", "gsm_local", "yandex"]
     source_info: Optional[str] = None
 
-# app/api/v1/get_data.py  (строитель — адаптированный фрагмент)
+# app/api/v1/get_data.py
 
 class GetDataOutBuilder:
     """Builder: пошаговое конструирование ответа локализации."""
@@ -239,7 +144,6 @@ class GetDataOutBuilder:
             source_info=self._source_info,
         )
 
-# Пример использования (вместо прямого вызова GetDataOut(...)):
 result = (
     GetDataOutBuilder()
     .set_location(lat, lon, acc)
@@ -253,54 +157,13 @@ result = (
 
 # Структурные шаблоны
 
-## 1. Фасад (Facade)
+## 1. Facade
 
 **Общее назначение:** Предоставляет упрощённый интерфейс к сложной подсистеме, скрывая детали её реализации. Снижает связность между клиентом и подсистемой.
 
 **Назначение в проекте LBS:** Функция `_process_get_data_single()` является фасадом: за единым вызовом она скрывает взаимодействие с kNN-локализатором, Yandex Locator, сервисом квот, map-matching (Valhalla), Redis-хвостом и логированием. Клиентский эндпоинт обращается к одной функции вместо оркестрации шести подсистем.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-package "Client" {
-  class GetDataEndpoint {
-    +POST /api/v1/get_data
-  }
-}
-
-package "Facade" {
-  class ProcessGetDataSingle {
-    +__call__(payload, request,\nbg_tasks, db, company, key) : GetDataOut
-  }
-}
-
-package "Subsystems" {
-  class WiFiKNNLocalizer {
-    +predict(scan) : tuple
-  }
-  class YaLocator {
-    +locate(wifi) : dict
-  }
-  class StatisticsService {
-    +increment_and_enforce()
-  }
-  class TailAndHeading {
-    +update_tail_and_do_mm()
-  }
-  class BackgroundTasks {
-    +add_task()
-  }
-}
-
-GetDataEndpoint --> ProcessGetDataSingle : вызывает
-ProcessGetDataSingle --> WiFiKNNLocalizer
-ProcessGetDataSingle --> YaLocator
-ProcessGetDataSingle --> StatisticsService
-ProcessGetDataSingle --> TailAndHeading
-ProcessGetDataSingle --> BackgroundTasks
-@enduml
-```
+![alt text](assets/facade.png)
 
 ```python
 # app/api/v1/get_data.py
@@ -343,46 +206,13 @@ async def _process_get_data_single(
 
 ---
 
-## 2. Адаптер (Adapter)
+## 2. Adapter
 
 **Общее назначение:** Преобразует интерфейс одного класса в интерфейс, ожидаемый клиентским кодом. Позволяет несовместимым классам работать вместе, не изменяя их исходный код.
 
 **Назначение в проекте LBS:** `YaLocator` адаптирует внешний HTTP API Yandex Locator к внутреннему интерфейсу сервиса. Он также нормализует различные форматы BSSID (десятичный, hex, MAC с разделителями) в единый формат `AA:BB:CC:DD:EE:FF`, требуемый Yandex API.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-interface InternalLocator <<Target>> {
-  +locate(scan: list[tuple]) : dict
-}
-
-class YaLocatorBase {
-  -session : requests.Session
-  -apikey : str
-  -timeout : tuple
-  +_post(path, data) : dict
-}
-
-class YaLocator <<Adapter>> {
-  +locate(wifi, cell, ip) : dict
-}
-
-class YandexLocatorAPI <<Adaptee>> {
-  POST https://locator.api.maps.yandex.ru/v1/locate
-  Формат: {"bssid": "AA:BB:CC:DD:EE:FF",\n"signal_strength": -70}
-}
-
-class LBSClient <<Client>> {
-  +_call_yandex(signals)
-}
-
-InternalLocator <|.. YaLocator
-YaLocator --|> YaLocatorBase
-YaLocator --> YandexLocatorAPI : HTTP POST
-LBSClient --> YaLocator : использует
-@enduml
-```
+![alt text](assets/adapter.png)
 
 ```python
 # app/services/ya_locator.py
@@ -421,42 +251,13 @@ class YaLocator(YaLocatorBase):
 
 ---
 
-## 3. Прокси (Proxy)
+## 3. Proxy (protection)
 
 **Общее назначение:** Предоставляет объект-заместитель, который контролирует доступ к другому объекту. Прокси имеет тот же интерфейс, что и реальный объект, и может выполнять дополнительные действия до/после обращения к нему.
 
 **Назначение в проекте LBS:** FastAPI-зависимость `require_company_and_key` является защитным прокси перед всеми эндпоинтами: она расшифровывает API-ключ, проверяет существование компании, проверяет наличие ключа в базе данных, и только при успешной проверке передаёт управление реальному обработчику.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-interface Subject <<interface>> {
-  +handle(request) : Response
-}
-
-class RealEndpoint <<RealSubject>> {
-  +handle(payload, company, key_name) : GetDataOut
-}
-
-class AuthProxy <<Proxy>> {
-  -parse_and_verify_token(api_key) : tuple
-  -check_company_active(uid) : Company
-  -check_key_provisioned(company_id, key_name) : Key
-  +require_company_and_key(api_key, session) : tuple
-}
-
-class Client {
-  HTTP request
-  with API-Key header
-}
-
-Subject <|.. RealEndpoint
-Subject <|.. AuthProxy
-Client --> AuthProxy : Depends(require_company_and_key)
-AuthProxy --> RealEndpoint : передаёт (company, key_name)
-@enduml
-```
+![alt text](assets/proxy.png)
 
 ```python
 # app/auth.py
@@ -472,7 +273,7 @@ async def require_company_and_key(
     if not api_key:
         raise HTTPException(HTTP_401_UNAUTHORIZED, "Missing API-Key")
 
-    # 1. Расшифровка токена ChaCha20Poly1305
+    # 1. Расшифровка токена
     uid, key_name = parse_and_verify_token(api_key)
 
     # 2. Проверка компании
@@ -491,7 +292,7 @@ async def require_company_and_key(
 
     return comp, key_name, quota  # передаёт данные реальному эндпоинту
 
-# Использование — прокси применяется декларативно:
+# Использование прокси
 @router.post("/get_data")
 async def get_data(auth=Depends(require_company_and_key)):
     company, key_name, _ = auth
@@ -500,41 +301,13 @@ async def get_data(auth=Depends(require_company_and_key)):
 
 ---
 
-## 4. Декоратор (Decorator)
+## 4. Decorator
 
 **Общее назначение:** Динамически добавляет объекту новые обязанности, не изменяя его класс. Является гибкой альтернативой наследованию для расширения функциональности.
 
 **Назначение в проекте LBS:** Зависимость `log_request_body` декорирует все роуты API-роутера, добавляя к ним логирование входящих запросов. Ни один обработчик эндпоинта не знает о логировании — оно прозрачно добавляется через механизм `Depends` на уровне роутера.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-interface Component <<interface>> {
-  +handle(request) : Response
-}
-
-class ConcreteEndpoint <<ConcreteComponent>> {
-  +handle(payload) : Response
-}
-
-class LogRequestBodyDecorator <<Decorator>> {
-  +log_request_body(request) : None
-  --
-  логирует метод, путь и тело запроса
-}
-
-class APIRouter {
-  +dependencies : [Depends(log_request_body)]
-  +include_router()
-}
-
-Component <|.. ConcreteEndpoint
-Component <|.. LogRequestBodyDecorator
-LogRequestBodyDecorator --> ConcreteEndpoint : оборачивает каждый эндпоинт
-APIRouter --> LogRequestBodyDecorator : применяет ко всем роутам
-@enduml
-```
+![alt text](assets/decorator.png)
 
 ```python
 # app/api/v1/router.py
@@ -571,57 +344,13 @@ router = APIRouter(
 
 # Поведенческие шаблоны
 
-## 1. Стратегия (Strategy)
+## 1. Strategy
 
 **Общее назначение:** Определяет семейство взаимозаменяемых алгоритмов, инкапсулирует каждый из них и делает их взаимозаменяемыми. Позволяет изменять алгоритм независимо от клиентов, которые его используют.
 
-**Назначение в проекте LBS:** Перечисление `ProviderMode` задаёт стратегию локализации: `yandex_only`, `wifi_only`, `gsm_only`, `local_only`, `auto_on_low_overlap`. Каждый режим — отдельная стратегия с собственным алгоритмом. Клиент передаёт выбранный режим в запросе, а контекст (`_process_get_data_single`) делегирует выполнение соответствующей стратегии.
+**Назначение в проекте LBS:** Перечисление `ProviderMode` задаёт стратегию локализации: `yandex_only`, `wifi_only`, `gsm_only`, `local_only`, `auto_on_low_overlap`. Каждый режим - отдельная стратегия с собственным алгоритмом. Клиент передаёт выбранный режим в запросе, а контекст (`_process_get_data_single`) делегирует выполнение соответствующей стратегии.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-interface LocalizationStrategy <<Strategy>> {
-  +localize(scan, db, company, key_name) : tuple
-}
-
-class YandexOnlyStrategy <<ConcreteStrategy>> {
-  +localize() : tuple
-}
-
-class WiFiOnlyStrategy <<ConcreteStrategy>> {
-  +localize() : tuple
-}
-
-class GsmOnlyStrategy <<ConcreteStrategy>> {
-  +localize() : tuple
-}
-
-class AutoFallbackStrategy <<ConcreteStrategy>> {
-  +localize() : tuple
-  -- WiFi -> GSM -> Yandex
-}
-
-enum ProviderMode {
-  yandex_only
-  wifi_only
-  gsm_only
-  local_only
-  auto_on_low_overlap
-}
-
-class ProcessGetDataSingle <<Context>> {
-  +execute(payload) : GetDataOut
-}
-
-LocalizationStrategy <|.. YandexOnlyStrategy
-LocalizationStrategy <|.. WiFiOnlyStrategy
-LocalizationStrategy <|.. GsmOnlyStrategy
-LocalizationStrategy <|.. AutoFallbackStrategy
-ProcessGetDataSingle --> LocalizationStrategy : делегирует
-ProcessGetDataSingle --> ProviderMode : выбирает стратегию
-@enduml
-```
+![alt text](assets/strategy.png)
 
 ```python
 # app/schemas.py
@@ -651,45 +380,13 @@ else:                                                    # Стратегия 4/
 
 ---
 
-## 2. Цепочка обязанностей (Chain of Responsibility)
+## 2. Chain of Responsibility
 
 **Общее назначение:** Позволяет передавать запрос по цепочке обработчиков. Каждый обработчик решает, обработать запрос самому или передать его следующему в цепочке.
 
 **Назначение в проекте LBS:** При автоматическом режиме локализации запрос проходит через цепочку обработчиков: сначала Wi-Fi kNN, при неудаче — GSM kNN, при неудаче — Yandex Locator. Каждое звено либо возвращает результат, либо передаёт запрос следующему, перехватывая специфические исключения.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-abstract class LocalizerHandler <<Handler>> {
-  -_next : LocalizerHandler | None
-  +{abstract} try_locate(scan) : tuple | None
-  +set_next(handler) : LocalizerHandler
-}
-
-class WiFiHandler <<ConcreteHandler>> {
-  +try_locate(wifi_scan) : tuple
-  -- бросает: NotEnoughSignals,
-  NotEnoughOverlap, ModelNotReady
-}
-
-class GsmHandler <<ConcreteHandler>> {
-  +try_locate(gsm_scan) : tuple
-  -- бросает те же исключения
-}
-
-class YandexHandler <<ConcreteHandler>> {
-  +try_locate(wifi_scan) : tuple
-  -- последнее звено цепи
-}
-
-LocalizerHandler <|-- WiFiHandler
-LocalizerHandler <|-- GsmHandler
-LocalizerHandler <|-- YandexHandler
-WiFiHandler -right-> GsmHandler : при ошибке ->
-GsmHandler -right-> YandexHandler : при ошибке ->
-@enduml
-```
+![alt text](assets/chain_of_resp.png)
 
 ```python
 # app/api/v1/get_data.py  (режим auto_on_low_overlap / local_only)
@@ -720,46 +417,13 @@ except (NotEnoughSignals, NotEnoughOverlap, LowConfidence, ModelNotReady) as wif
 
 ---
 
-## 3. Наблюдатель (Observer)
+## 3. Observer
 
 **Общее назначение:** Определяет зависимость «один ко многим» между объектами, при которой изменение состояния одного объекта приводит к автоматическому уведомлению и обновлению всех зависимых объектов.
 
 **Назначение в проекте LBS:** По завершении локализации `BackgroundTasks` уведомляет наблюдателей: `_log_usage_bg` асинхронно записывает лог в БД, `_cache_yandex` сохраняет результат Яндекса обратно в базу измерений. Наблюдатели выполняются в фоне и не блокируют HTTP-ответ.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-class LocalizationSubject <<Subject>> {
-  +_process_get_data_single() : GetDataOut
-  +notify_observers(result) : None
-}
-
-interface Observer <<Observer>> {
-  +execute(*args) : None
-}
-
-class LogUsageBg <<ConcreteObserver>> {
-  +execute(company_id, key_name,\nendpoint, provider, imei) : None
-  -- записывает лог в БД
-}
-
-class CacheYandex <<ConcreteObserver>> {
-  +execute(payload, lat, lon, acc) : None
-  -- кэширует результат Яндекса
-}
-
-class BackgroundTasks <<Broker>> {
-  +add_task(func, *args) : None
-}
-
-LocalizationSubject --> BackgroundTasks : add_task()
-BackgroundTasks --> LogUsageBg : вызывает асинхронно
-BackgroundTasks --> CacheYandex : вызывает асинхронно
-Observer <|.. LogUsageBg
-Observer <|.. CacheYandex
-@enduml
-```
+![alt text](assets/observer.png)
 
 ```python
 # app/api/v1/get_data.py
@@ -791,44 +455,18 @@ background_tasks.add_task(_cache_yandex, payload, lat, lon, acc)
 
 ---
 
-## 4. Состояние (State)
+## 4. State
 
 **Общее назначение:** Позволяет объекту изменять своё поведение в зависимости от внутреннего состояния. Объект ведёт себя так, как будто меняет свой класс.
 
 **Назначение в проекте LBS:** `KnnMatrixCache` имеет два состояния: `None` (модель не загружена) и `KnnCacheState` (модель готова). В состоянии `None` любой запрос к кэшу выбрасывает `ModelNotReady`. В состоянии `KnnCacheState` возвращаются матрица и индексы. Переход между состояниями осуществляет метод `reload()`.
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-class KnnMatrixCache <<Context>> {
-  -_state : KnnCacheState | None
-  +reload(session) : None
-  +get_knn_cache() : tuple
-  +get_matrix() : csr_matrix
-}
-
-state "Uninitialized\n(_state = None)" as Uninit {
-  Uninit : get_knn_cache() -> ModelNotReady
-}
-
-state "Loaded\n(_state = KnnCacheState)" as Loaded {
-  Loaded : get_knn_cache() -> (matrix, index, ...)
-  Loaded : loaded_at = datetime
-}
-
-[*] --> Uninit : создание объекта
-Uninit --> Loaded : reload() успешен
-Loaded --> Loaded : reload() (обновление)
-Loaded --> Uninit : reload() + пустой датасет
-@enduml
-```
+![alt text](assets/state.png)
 
 ```python
 # app/services/knn_localizer.py
 
 class KnnCacheState(NamedTuple):
-    """Иммутабельный снимок состояния «модель загружена»."""
     matrix: csr_matrix
     inv_index: list[np.ndarray]
     bssid_to_col_idx: dict[str, int]
@@ -860,45 +498,13 @@ class KnnMatrixCache:
 
 ---
 
-## 5. Шаблонный метод (Template Method)
+## 5. Template Method
 
 **Общее назначение:** Определяет скелет алгоритма в базовом классе, откладывая реализацию некоторых шагов на подклассы. Позволяет подклассам переопределять отдельные шаги алгоритма, не изменяя его структуру.
 
-**Назначение в проекте LBS:** Метод `KnnMatrixCache.reload()` задаёт каркас алгоритма построения модели: блокировка → загрузка данных → построение матрицы → нормализация → обновление состояния. Шаг нормализации RSSI является «хуком», поведение которого различается для Wi-Fi (диапазон −100..0 dBm) и GSM (диапазон 0..63).
+**Назначение в проекте LBS:** Метод `KnnMatrixCache.reload()` задаёт каркас алгоритма построения модели: блокировка -> загрузка данных -> построение матрицы -> нормализация -> обновление состояния. Шаг нормализации RSSI является «хуком», поведение которого различается для Wi-Fi (диапазон −100..0 dBm) и GSM (диапазон 0..63).
 
-```plantuml
-@startuml
-skinparam classAttributeIconSize 0
-
-abstract class KnnCacheBase <<AbstractClass>> {
-  #station_type_id : int
-  +reload(session, type) : None
-  #{abstract} _rssi_encode(rssi) : float
-  --
-  template method: reload()
-  1. lock
-  2. load_training_df()
-  3. build_matrix()
-  4. normalize_rssi()  <<hook>>
-  5. update_state()
-}
-
-class WiFiKnnCache <<ConcreteClass>> {
-  +station_type_id = 1
-  #_rssi_encode(rssi) : float
-  -- rssi in [-100, 0] dBm
-}
-
-class GsmKnnCache <<ConcreteClass>> {
-  +station_type_id = 2
-  #_rssi_encode(rssi) : float
-  -- rssi in [0, 63]
-}
-
-KnnCacheBase <|-- WiFiKnnCache
-KnnCacheBase <|-- GsmKnnCache
-@enduml
-```
+![alt text](assets/template.png)
 
 ```python
 # app/services/knn_localizer.py
@@ -946,9 +552,9 @@ async def reload(self, session: AsyncSession, type: str) -> None:
 
 ## Роли (обязанности) классов
 
-### 1. Информационный эксперт (Information Expert)
+### 1. Information Expert
 
-**Проблема:** Кто должен отвечать за предоставление данных kNN-модели — матрицы сигналов, индекса и координат точек измерений?
+**Проблема:** Кто должен отвечать за предоставление данных kNN-модели?
 
 **Решение:** Класс `KnnMatrixCache` является информационным экспертом: он единственный, кто хранит всю информацию о состоянии модели (`KnnCacheState`) и несёт ответственность за её предоставление и обновление.
 
@@ -978,7 +584,7 @@ class KnnMatrixCache:
 
 ---
 
-### 2. Создатель (Creator)
+### 2. Creator
 
 **Проблема:** Кто должен создавать объекты `KnnCacheState`, содержащие обученную модель?
 
@@ -1003,11 +609,11 @@ class KnnMatrixCache:
 
 **Результаты:** Ответственность за создание `KnnCacheState` сосредоточена в одном месте. Снижается связность: клиентский код не знает о деталях конструирования модели.
 
-**Связь с другими паттернами:** Реализует паттерн Шаблонный метод (структуру создания задаёт `reload()`) и Состояние (переводит кэш в состояние Loaded).
+**Связь с другими паттернами:** Реализует паттерн Template (структуру создания задаёт `reload()`) и State (переводит кэш в состояние Loaded).
 
 ---
 
-### 3. Контроллер (Controller)
+### 3. Controller
 
 **Проблема:** Кто должен принимать и координировать системные операции при запросе локализации?
 
@@ -1041,7 +647,7 @@ async def _process_get_data_single(
 
 ---
 
-### 4. Слабое зацепление (Low Coupling)
+### 4. Low Coupling
 
 **Проблема:** Как минимизировать зависимость системы от внешнего Yandex Locator API, чтобы его замена не затронула остальной код?
 
@@ -1070,7 +676,7 @@ def _do_request():
 
 ---
 
-### 5. Высокое зацепление (High Cohesion)
+### 5. High Cohesion
 
 **Проблема:** Как не допустить, чтобы логика работы со статистикой и квотами была разбросана по разным модулям системы?
 
@@ -1107,16 +713,16 @@ async def write_usage_log(session, company_id, key_name, endpoint,
 
 ## Принципы разработки
 
-### 1. Чистая выдумка (Pure Fabrication)
+### 1. Pure Fabrication
 
 **Проблема:** Логика хранения «хвостов» трека устройств в Redis и вычисления курса не принадлежит ни одному доменному объекту (компании, устройству, измерению). Куда её поместить без нарушения связности?
 
-**Решение:** Создан искусственный модуль `app/services/tail_and_heading.py` — Pure Fabrication, не имеющий аналога в предметной области, но собирающий связную функциональность в одном месте.
+**Решение:** Создан искусственный модуль `app/services/tail_and_heading.py` - Pure Fabrication, не имеющий аналога в предметной области, но собирающий связную функциональность в одном месте.
 
 ```python
 # app/services/tail_and_heading.py
 
-# Глобальный Redis-клиент — ресурс, не относящийся к домену
+# Глобальный Redis-клиент - ресурс, не относящийся к домену
 r = redis.from_url(REDIS_URL, decode_responses=True)
 
 TAIL_MAX = int(os.getenv("TAIL_MAX", "5"))
@@ -1139,18 +745,18 @@ def initial_bearing_deg(lat1, lon1, lat2, lon2) -> float:
 
 **Результаты:** Доменные объекты остаются чистыми. Функциональность хвоста/курса сосредоточена в одном месте и легко тестируется изолированно.
 
-**Связь с другими паттернами:** Поддерживает High Cohesion — модуль занимается только хвостами и курсами.
+**Связь с другими паттернами:** Поддерживает High Cohesion — модуль занимается только рассчетом хвостов и направлений.
 
 ---
 
-### 2. Перенаправление (Indirection)
+### 2. Indirection
 
 **Проблема:** Как избежать прямой зависимости HTTP-эндпоинтов от логики аутентификации и базы данных, сохранив возможность использовать результат аутентификации в обработчике?
 
 **Решение:** `require_company_and_key` вводит уровень косвенности (Indirection) между клиентом и эндпоинтом. Эндпоинт не вызывает логику аутентификации напрямую — он получает готовый результат через механизм зависимостей FastAPI.
 
 ```python
-# app/auth.py — уровень косвенности
+# app/auth.py - уровень косвенности
 
 async def require_company_and_key(
     api_key: str | None = Header(None, alias="API-Key"),
@@ -1166,7 +772,7 @@ async def require_company_and_key(
     )).scalar_one_or_none()
     return comp, key_name, quota
 
-# app/api/v1/get_data.py — эндпоинт не знает о деталях аутентификации:
+# app/api/v1/get_data.py - эндпоинт не знает о деталях аутентификации:
 @router.post("/get_data")
 async def get_data(
     payload: GetDataIn,
@@ -1178,18 +784,18 @@ async def get_data(
 
 **Результаты:** Логика аутентификации легко переиспользуется на других эндпоинтах. Эндпоинты не связаны с деталями шифрования ключей.
 
-**Связь с другими паттернами:** Реализует паттерн Прокси (контроль доступа через посредника).
+**Связь с другими паттернами:** Реализует паттерн Proxy (контроль доступа через посредника).
 
 ---
 
-### 3. Защита от изменений (Protected Variations)
+### 3. Protected Variations
 
 **Проблема:** Как защитить систему от необходимости изменять код при добавлении нового провайдера локализации или изменении логики выбора между ними?
 
 **Решение:** Перечисление `ProviderMode` является точкой Protected Variations: все вариации в выборе провайдера инкапсулированы за единым интерфейсом. Добавление нового режима (`satellite_only`) требует только добавления значения в enum и одной ветки `if` — без правок клиентского кода.
 
 ```python
-# app/schemas.py — точка защиты от изменений
+# app/schemas.py - точка защиты от изменений
 
 class ProviderMode(str, Enum):
     """
@@ -1203,20 +809,18 @@ class ProviderMode(str, Enum):
     gsm_only             = "gsm_only"
     # Добавление нового провайдера: только здесь + одна ветка в _process_get_data_single
 
-# app/api/v1/get_data.py — система работает с абстракцией, не с конкретными провайдерами:
+# app/api/v1/get_data.py - система работает с абстракцией, не с конкретными провайдерами:
 class GetDataIn(BaseModel):
     provider_mode: ProviderMode = ProviderMode.local_only
 ```
 
 **Результаты:** Добавление нового провайдера локализации не требует изменений в схемах, клиентском коде или документации API — только расширение enum.
 
-**Связь с другими паттернами:** Поддерживает паттерн Стратегия (каждый режим — стратегия) и Low Coupling (клиент не зависит от конкретных провайдеров).
-
 ---
 
 ## Свойство программы
 
-### Полиморфизм (Polymorphism)
+### Polymorphism
 
 **Проблема:** Как обеспечить единообразный интерфейс для работы с локализаторами разных типов (Wi-Fi и GSM), чтобы код обработки не зависел от конкретного типа?
 
